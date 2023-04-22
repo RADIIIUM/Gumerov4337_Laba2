@@ -1,22 +1,36 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using Excel = Microsoft.Office.Interop.Excel;
-
+using System.Runtime.Serialization.Json;
+using System.Text.Json;
+using System.Security.Cryptography.X509Certificates;
+using System.Security.Cryptography;
+using System.Text.Json.Serialization;
+using Microsoft.Office.Interop.Excel;
+using System.Web.Script.Serialization;
+using Newtonsoft.Json;
+using Word = Microsoft.Office.Interop.Word;
+using System.Data.Entity.Validation;
+using System.ComponentModel;
+using Newtonsoft.Json.Converters;
 
 namespace Template_4337
 {
     /// <summary>
     /// Логика взаимодействия для _4337_Gumerov.xaml
     /// </summary>
-    public partial class _4337_Gumerov : Window
+    public partial class _4337_Gumerov : System.Windows.Window
     {
         public _4337_Gumerov()
         {
             InitializeComponent();
+
         }
+
         private void Import(object sender, RoutedEventArgs e)
         {
             OpenFileDialog ofd = new OpenFileDialog()
@@ -83,8 +97,6 @@ namespace Template_4337
 
                 foreach (var client in allStudents)
                 {
-                    if (client.Age != "Возраст")
-                    {
                         string tip = "";
                         if (Convert.ToInt32(client.Age) <= 29 && Convert.ToInt32(client.Age) >= 20) { tip = "Категория 1"; }
                         if (Convert.ToInt32(client.Age) <= 39 && Convert.ToInt32(client.Age) >= 30) { tip = "Категория 2"; }
@@ -97,7 +109,6 @@ namespace Template_4337
                             worksheet.Cells[4][startRowIndex] = client.Age;
                             startRowIndex++;
                         }
-                    }
 
                 }
 
@@ -106,6 +117,131 @@ namespace Template_4337
             app.Visible = true;
 
         }
+        private void ImportJSON(object sender, RoutedEventArgs e)
+        {
+            using (ISRPO2Entities db = new ISRPO2Entities())
+            {
+
+
+                OpenFileDialog open_dialog = new OpenFileDialog();
+                if (open_dialog.ShowDialog() == true)
+                {
+                        string json = File.ReadAllText(open_dialog.FileName);
+                        json = json.Substring(0, json.Length - 1);
+                        string[] words = json.Split('}');
+                        string d = "";
+                        foreach (string s in words)
+                        {
+                            d = s + "}";
+                            d = d.Substring(1);
+                            if (d != "")
+                            {
+                            var dateTimeConverter = new IsoDateTimeConverter { DateTimeFormat = "dd/MM/yyyy" };
+                            ClientsJSON cl = JsonConvert.DeserializeObject<ClientsJSON>(d, dateTimeConverter);
+                                db.ClientsJSON.Add(new ClientsJSON()
+                                {
+                                    Id = cl.Id,
+                                    FullName = cl.FullName,
+                                    E_Mail = cl.E_Mail,
+                                    BirthDate = cl.BirthDate
+                                });
+
+                            }
+                        }
+                        try { 
+                        db.SaveChanges();
+                        MessageBox.Show("Успешно импортировано!");
+                          }
+                    catch (DbEntityValidationException ex)
+                    {
+                        foreach (DbEntityValidationResult validationError in ex.EntityValidationErrors)
+                        {
+                            MessageBox.Show("Object: " + validationError.Entry.Entity.ToString());
+                            MessageBox.Show("\n");
+                            foreach (DbValidationError err in validationError.ValidationErrors)
+                            {
+                                MessageBox.Show(err.ErrorMessage);
+                                break;
+                            }
+                            break;
+                        }
+                    }
+                }
+
+            }
+
+        }
+    
+        
+
+        private void ExportWORD(object sender, RoutedEventArgs e)
+        {
+            List<ClientsJSON> allStudents;
+
+            using (ISRPO2Entities usersEntities = new ISRPO2Entities())
+            {
+                allStudents = usersEntities.ClientsJSON.ToList();
+            }
+            var app = new Word.Application();
+            Word.Document document = app.Documents.Add();
+
+            for (int i = 1; i < 4; i++)
+            {
+                Word.Paragraph paragraph = document.Paragraphs.Add();
+                Word.Range range = paragraph.Range;
+                range.Text = "Категория " + Convert.ToString(i);
+                string worksheet = "Категория " + Convert.ToString(i);
+                paragraph.set_Style("Заголовок 1");
+                range.InsertParagraphAfter();
+
+                Word.Paragraph tableParagraph = document.Paragraphs.Add();
+                Word.Range tableRange = tableParagraph.Range;
+                Word.Table studentsTable = document.Tables.Add(tableRange, 15, 4);
+
+                Word.Range cellRange;
+                cellRange = studentsTable.Cell(1, 1).Range;
+                cellRange.Text = "Код клиента";
+                cellRange = studentsTable.Cell(1, 2).Range;
+                cellRange.Text = "ФИО";
+                cellRange = studentsTable.Cell(1, 3).Range;
+                cellRange.Text = "Email";
+                cellRange = studentsTable.Cell(1, 4).Range;
+                cellRange.Text = "Возраст";
+                studentsTable.Rows[1].Range.Bold = 1;
+                studentsTable.Rows[1].Range.ParagraphFormat.Alignment = Word.WdParagraphAlignment.wdAlignParagraphCenter;
+
+                int k = 1;
+                foreach (var clients in allStudents)
+                {
+                    string tip = "";
+                    if (Convert.ToInt32(DateTime.Today.Year - clients.BirthDate.Value.Year) >= 20 && Convert.ToInt32(DateTime.Today.Year - clients.BirthDate.Value.Year) <= 29) { tip = "Категория 1"; }
+                    if (Convert.ToInt32(DateTime.Today.Year - clients.BirthDate.Value.Year) >= 30 && Convert.ToInt32(DateTime.Today.Year - clients.BirthDate.Value.Year) <= 39) { tip = "Категория 2"; }
+                    if (Convert.ToInt32(DateTime.Today.Year - clients.BirthDate.Value.Year) >= 40) { tip = "Категория 3"; }
+                    if (tip == worksheet)
+                    {
+                        cellRange = studentsTable.Cell(k + 1, 1).Range;
+                        cellRange.Text = clients.Id.ToString();
+                        cellRange.ParagraphFormat.Alignment = Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                        cellRange = studentsTable.Cell(k + 1, 2).Range;
+                        cellRange.Text = clients.FullName;
+                        cellRange.ParagraphFormat.Alignment = Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                        cellRange = studentsTable.Cell(k + 1, 3).Range;
+                        cellRange.Text = clients.E_Mail;
+                        cellRange.ParagraphFormat.Alignment = Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                        cellRange = studentsTable.Cell(k + 1, 4).Range;
+                        cellRange.Text = (Convert.ToInt32(DateTime.Today.Year - clients.BirthDate.Value.Year).ToString());
+                        cellRange.ParagraphFormat.Alignment = Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                        k++;
+                    }
+
+                }
+                document.Words.Last.InsertBreak(Word.WdBreakType.wdPageBreak);
+            }
+            app.Visible = true;
+            MessageBox.Show("Документ сохранен");
+            document.SaveAs2(@"C:\Users\Владелец\Desktop\outputFileWord.docx");
+        }
+    }
 
     }
-}
+

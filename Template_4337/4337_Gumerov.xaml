@@ -17,15 +17,34 @@
                    FontWeight="Bold"
                    Text="Гумеров Радмир Булатович 4337"
                    Grid.Row="0" />
+        
+        
         <Button Width="100"
                 HorizontalAlignment="Left"
                 Content="Импорт данных" 
                 Grid.Row="1"
                 Click="Import"/>
+
+        <Button Width="100"
+                Margin="110,0,0,0"
+                HorizontalAlignment="Left"
+                Content="Импорт данных json" 
+                Grid.Row="1"
+                Click="ImportJSON"/>
+
+
         <Button Width="100"
                 HorizontalAlignment="Right"
                 Content="Экспорт Эксель" 
                 Grid.Row="1"
                 Click="Export"/>
+        
+        
+        <Button Width="100"
+                Margin="0,0,110,0"
+                HorizontalAlignment="Right"
+                Content="Экспорт Word" 
+                Grid.Row="1"
+                Click="ExportWORD"/>
     </Grid>
 </Window>

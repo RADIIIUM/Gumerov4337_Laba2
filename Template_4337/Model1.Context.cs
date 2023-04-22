@@ -27,5 +27,6 @@ namespace Template_4337
     
         public virtual DbSet<Clients> Clients { get; set; }
         public virtual DbSet<sysdiagrams> sysdiagrams { get; set; }
+        public virtual DbSet<ClientsJSON> ClientsJSON { get; set; }
     }
 }
